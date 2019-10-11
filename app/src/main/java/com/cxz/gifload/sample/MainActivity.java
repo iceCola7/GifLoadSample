@@ -1,34 +1,60 @@
 package com.cxz.gifload.sample;
 
+import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
+import android.widget.ImageView;
+
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.os.Bundle;
-import android.widget.TextView;
-
-import java.util.List;
+import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
-    // Used to load the 'native-lib' library on application startup.
-    static {
-        System.loadLibrary("native-lib");
-    }
+    private ImageView imageView;
+    private String path = Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "demo.gif";
+    private GifHandle gifHandle;
+    private Bitmap bitmap;
+
+
+    @SuppressLint("HandlerLeak")
+    private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case 1:
+                    final long nextFrameTime = gifHandle.renderFrame(bitmap);
+                    imageView.setImageBitmap(bitmap);
+                    handler.sendEmptyMessageDelayed(1, nextFrameTime);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        imageView = findViewById(R.id.imageView);
 
-        // Example of a call to a native method
-        TextView tv = findViewById(R.id.sample_text);
-        tv.setText(stringFromJNI());
+        gifHandle = new GifHandle(path);
 
-
+        int width = gifHandle.getWidth();
+        int height = gifHandle.getHeight();
+        bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        // 图片渲染
+        final long nextFrameTime = gifHandle.renderFrame(bitmap);
+        if (handler != null) {
+            handler.sendEmptyMessageDelayed(1, nextFrameTime);
+        }
+        imageView.setImageBitmap(bitmap);
     }
 
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-    public native String stringFromJNI();
 }
